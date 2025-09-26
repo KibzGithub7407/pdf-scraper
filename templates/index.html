@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PDF Scraper</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <h1>PDF Scraper</h1>
+    <div id="error-message"></div>
+    <form id="scraper-form" autocomplete="off">
+      <input type="url" id="url-input" placeholder="Enter URL with PDFs" required>
+      <button type="submit" id="scrape-btn">Scrape PDFs</button>
+    </form>
+    <div id="spinner"></div>
+    <div id="results"></div>
+  </div>
+  <script>
+    const form = document.getElementById('scraper-form');
+    const urlInput = document.getElementById('url-input');
+    const resultsDiv = document.getElementById('results');
+    const spinner = document.getElementById('spinner');
+    const scrapeBtn = document.getElementById('scrape-btn');
+    const errorMessage = document.getElementById('error-message');
+
+    function showSpinner(show) {
+      spinner.style.display = show ? 'block' : 'none';
+      scrapeBtn.disabled = show;
+    }
+
+    function displayResults(data) {
+      resultsDiv.innerHTML = '';
+      if (!data.results || data.results.length === 0) {
+        resultsDiv.textContent = 'No PDFs found or failed to extract any text.';
+        return;
+      }
+      data.results.forEach(res => {
+        const block = document.createElement('div');
+        block.className = 'result-block';
+        const h3 = document.createElement('h3');
+        h3.textContent = res.pdf_url;
+        const pre = document.createElement('pre');
+        pre.textContent = res.text;
+        block.appendChild(h3);
+        block.appendChild(pre);
+        resultsDiv.appendChild(block);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMessage.textContent = '';
+      resultsDiv.innerHTML = '';
+      showSpinner(true);
+      try {
+        const url = urlInput.value.trim();
+        const resp = await fetch('/scrape', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({url})
+        });
+        const data = await resp.json();
+        showSpinner(false);
+        if (!resp.ok) {
+          errorMessage.textContent = data.error || 'An error occurred. Please try again.';
+          return;
+        }
+        displayResults(data);
+      } catch (err) {
+        showSpinner(false);
+        errorMessage.textContent = 'Failed to connect to backend. Please try again.';
+      }
+    });
+  </script>
+</body>
+</html>
